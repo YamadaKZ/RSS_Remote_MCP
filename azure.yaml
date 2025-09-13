@@ -10,9 +10,6 @@ services:
   function:
     project: ./mcp-code            # Functions コードがあるディレクトリ
     language: python
-    host: flexConsumption
+    host: function 
     resourceName: ${AZURE_ENV_NAME}-${name}func
-    # predeploy でインフラを先にデプロイする例（不要であれば削除可）
-    hooks:
-      predeploy:
-        - az deployment group create --resource-group ${AZURE_ENV_NAME} --template-file infra/main.bicep --parameters location=${AZURE_LOCATION} mcpFunctionsKey=""
+
