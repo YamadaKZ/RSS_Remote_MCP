@@ -1,35 +1,47 @@
-// apim.bicep
-// APIM (Standard v2) を作成し、MCP API と Named Value を構築します。
+//APIM
 
 targetScope = 'resourceGroup'
 
 @description('Name of the API Management service.')
 param apimName string
+
 @description('Azure region for the APIM instance.')
 param location string
-@description('Email address of the API publisher.')
+
+@description('Email address of the API publisher.  Shown in the developer portal.')
 param publisherEmail string
-@description('Name of the API publisher.')
+
+@description('Name of the API publisher.  Shown in the developer portal.')
 param publisherName string
-@description('Resource ID of the subnet used for APIM outbound VNet integration.')
+
+@description('The resource ID of the subnet used for APIM outbound VNet integration.')
 param vnetSubnetId string
-@description('Default hostname of the Function App (e.g. <app>.azurewebsites.net).')
+
+@description('The default hostname of the Function App (e.g. <app>.azurewebsites.net).')
 param functionHostName string
-@description('System key named mcp_extension from the Function App.')
+
+@description('The system key named mcp_extension from the Function App.  This key is required for the APIM to authenticate with the MCP extension.  Retrieve itfrom the Function App after deployment via the Azure portal or CLI.')
 @secure()
 param mcpFunctionsKey string
+
 @description('Path segment for the MCP API exposed via APIM.')
 param apiPath string = 'mcp'
-@description('SKU name for APIM.')
+
+@description('SKU name for APIM.  Must be StandardV2 or Premium for VNet integration.')
 param skuName string = 'StandardV2'
+
 @description('Capacity unit for the APIM instance.')
 param skuCapacity int = 1
+
 
 // APIM サービス
 resource apim 'Microsoft.ApiManagement/service@2024-06-01-preview' = {
   name: apimName
   location: location
-  sku: { name: skuName; capacity: skuCapacity }
+  sku: {
+    name: skuName
+    capacity: skuCapacity
+  }
   properties: {
     publisherEmail: publisherEmail
     publisherName: publisherName
@@ -38,10 +50,12 @@ resource apim 'Microsoft.ApiManagement/service@2024-06-01-preview' = {
     }
     virtualNetworkType: 'External'
     publicNetworkAccess: 'Enabled'
+    // Additional optional settings can be specified here, such as
+    // customProperties to disable older TLS protocols.
   }
 }
 
-// Named Value に MCP システムキーを保存
+// MCP API
 resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview' = {
   parent: apim
   name: 'mcp-functions-key'
@@ -52,38 +66,65 @@ resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview'
   }
 }
 
-// MCP API
+// Named Value に MCP システムキーを保存
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
   parent: apim
   name: '${apiPath}'
   properties: {
     displayName: 'MCP API'
     path: apiPath
-    serviceUrl: 'https://${functionHostName}/runtime/webhooks/mcp'
+    // Host name only; operations will include the full MCP extension path
+    serviceUrl: 'https://${functionHostName}'
     protocols: [ 'https' ]
     subscriptionRequired: false
   }
   dependsOn: [mcpKey]
 }
 
-// ポリシー：x-functions-key を自動付与:contentReference[oaicite:4]{index=4}
+// MCP API のポリシー定義
 resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-preview' = {
   parent: mcpApi
   name: 'policy'
   properties: {
     format: 'xml'
     value: '''<policies>
-  <inbound>
-    <set-header name="x-functions-key" exists-action="override">
-      <value>{{mcp-functions-key}}</value>
-    </set-header>
-  </inbound>
-  <backend>
-    <forward-request />
-  </backend>
-  <outbound />
-  <on-error />
-</policies>'''
+        <inbound>
+            <base />
+            <!-- Functions 認証：mcp_extension の system key を Named value から -->
+            <set-header name="x-functions-key" exists-action="override">
+                <value>{{mcp-functions-key}}</value>
+            </set-header>
+            <!-- GET のときだけ SSE 用ヘッダーを付与 -->
+            <choose>
+                <when condition="@(context.Request.Method == \"GET\")">
+                    <set-header name="Accept" exists-action="override">
+                        <value>text/event-stream</value>
+                    </set-header>
+                    <set-header name="Cache-Control" exists-action="override">
+                        <value>no-cache</value>
+                    </set-header>
+                </when>
+            </choose>
+        </inbound>
+        <backend>
+            <!-- SSE はバッファ無効が必須 -->
+            <forward-request buffer-response="false" timeout="300" />
+        </backend>
+        <outbound>
+            <base />
+            <!-- GET 応答だけ event-stream にする -->
+            <choose>
+                <when condition="@(context.Request.Method == \"GET\")">
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>text/event-stream</value>
+                    </set-header>
+                </when>
+            </choose>
+        </outbound>
+        <on-error>
+            <base />
+        </on-error>
+    </policies>'''
   }
 }
 
@@ -94,18 +135,25 @@ resource sseOperation 'Microsoft.ApiManagement/service/apis/operations@2024-06-0
   properties: {
     displayName: 'Server Sent Events'
     method: 'GET'
-    urlTemplate: '/sse'
+    // Map to /runtime/webhooks/mcp/sse on the Function App
+    urlTemplate: '/runtime/webhooks/mcp/sse'
     responses: [ { statusCode: 200 } ]
   }
 }
 
+// Define the message POST operation exposed at /mcp/message.  The backend
+// endpoint relative to the base serviceUrl is /message.
 resource messageOperation 'Microsoft.ApiManagement/service/apis/operations@2024-06-01-preview' = {
   parent: mcpApi
   name: 'message'
   properties: {
     displayName: 'MCP Message'
     method: 'POST'
-    urlTemplate: '/message'
+    // Map to /runtime/webhooks/mcp/message on the Function App
+    urlTemplate: '/runtime/webhooks/mcp/message'
+    request: {
+      queryParameters: []
+    }
     responses: [ { statusCode: 200 } ]
   }
 }
