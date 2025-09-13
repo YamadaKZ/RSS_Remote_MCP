@@ -1,0 +1,15 @@
+
+{
+    "version": "2.0",
+    "extensionBundle": {
+        "id": "Microsoft.Azure.Functions.ExtensionBundle.Experimental",
+        "version": "[4.*, 5.0.0)"
+    },
+    "extensions": {
+        "mcp": {
+        "serverName": "CalcMcpServer",
+        "serverVersion": "0.2.0",
+        "instructions": "Use the 'calculator' tool to perform add/sub/mul/div on two numbers."
+        }
+    }
+}
