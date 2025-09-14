@@ -6,9 +6,9 @@
     },
     "extensions": {
         "mcp": {
-        "serverName": "CalcMcpServer",
-        "serverVersion": "0.2.0",
-        "instructions": "Use the 'calculator' tool to perform add/sub/mul/div on two numbers."
+        "instructions": "Use 'fetch_rss' to fetch RSS/Atom (Azure & Zenn presets). Use 'list_presets' to see options.",
+        "serverName": "RssMcpServer",
+        "serverVersion": "0.1.1"
         }
     }
 }
