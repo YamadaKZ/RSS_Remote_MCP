@@ -24,7 +24,7 @@ Zenn アカウント: https://zenn.dev/yamadakz
 4. VNet による閉域化
   - https://zenn.dev/yamadakz/articles/mcp-vnet-closed
 
-本リポジトリは、上記ハンズオンの内容を azd 用テンプレートとして集約しています。`infra/main.bicep` をエントリーポイントに、VNet → Functions → APIM の順でプロビジョニングし、`mcp-code` の Python Functions を同時にデプロイします。初回は APIM → Functions 呼び出し用のシステムキーを空で立ち上げ、デプロイ後に Functions 側の拡張の System key を取得して `BICEP_PARAM_MCPFUNCTIONSKEY` に設定し、再度 `azd up` で反映するフローもハンズオンに沿っています。
+本リポジトリは、上記ハンズオンの内容を azd 用テンプレートとして集約しています。`infra/main.bicep` をエントリーポイントに、VNet → Functions → APIM の順でプロビジョニングし、`mcp-code` の Python Functions を同時にデプロイします。初回は APIM → Functions 呼び出し用のシステムキーを空で立ち上げ、デプロイ後に Functions 側の拡張の System key を取得して `BICEP_PARAM_MCPFUNCTIONSKEY` に設定し、再度 `azd up` で反映します。
 
 > - 初回は APIM が使うシステムキー `mcpFunctionsKey` を空文字でデプロイ。デプロイ後に Functions 拡張の System key を取得し、再デプロイで設定。
 
