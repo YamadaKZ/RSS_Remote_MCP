@@ -56,7 +56,7 @@ resource apim 'Microsoft.ApiManagement/service@2024-06-01-preview' = {
 }
 
 // MCP API
-resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview' = {
+resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview' = if (!empty(mcpFunctionsKey)) {
   parent: apim
   name: 'mcp-functions-key'
   properties: {
@@ -69,7 +69,7 @@ resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview'
 // Named Value に MCP システムキーを保存
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
   parent: apim
-  name: '${apiPath}'
+  name: apiPath
   properties: {
     displayName: 'MCP API'
     path: apiPath
@@ -78,11 +78,10 @@ resource mcpApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
     protocols: [ 'https' ]
     subscriptionRequired: false
   }
-  dependsOn: [mcpKey]
 }
 
 // MCP API のポリシー定義
-resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-preview' = {
+resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-preview' = if (!empty(mcpFunctionsKey)) {
   parent: mcpApi
   name: 'policy'
   properties: {

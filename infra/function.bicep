@@ -20,11 +20,15 @@ param peSubnetId string
 param dnsZoneId string
 @description('Python version for the Function runtime.')
 param pythonVersion string = '3.11'
+@description('Name of the blob container used as the deployment source for Flex Consumption.')
+param deploymentStorageContainerName string = 'deployments'
+@description('Enable public network access to the Function App (required for Kudu/SCM based deployments like azd deploy).')
+param enablePublicNetworkAccess bool = true
 
 var storageSuffix = environment().suffixes.storage
 
-// ストレージアカウント
-resource storage 'Microsoft.Storage/storageAccounts@2024-02-01' = {
+// ストレージアカウント（2024-02-01 は japaneast で未登録のため 2024-01-01 を使用）
+resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: storageAccountName
   location: location
   sku: { name: 'Standard_LRS' }
@@ -39,6 +43,20 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-02-01' = {
       bypass: 'AzureServices'
       defaultAction: 'Allow'
     }
+  }
+}
+
+// Blob service (default) and container for Flex Consumption deployment source
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' = {
+  parent: blobService
+  name: deploymentStorageContainerName
+  properties: {
+    publicAccess: 'None'
   }
 }
 
@@ -63,14 +81,16 @@ resource appInsights 'microsoft.insights/components@2020-02-02' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
-    IngestionMode: 'LogAnalytics'
+    // LogAnalytics を指定するには WorkspaceResourceId が必須となるため、既定の ApplicationInsights を使用
+    IngestionMode: 'ApplicationInsights'
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
     RetentionInDays: 90
   }
 }
 
-var storageKeys = listKeys(storage.id, '2024-02-01')
+// 推奨: 関数ではなくリソース参照の listKeys() を使用
+var storageKeys = storage.listKeys()
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storageKeys.keys[0].value};EndpointSuffix=${storageSuffix}'
 
 // Function App
@@ -82,21 +102,57 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
-    publicNetworkAccess: empty(peSubnetId) ? 'Enabled' : 'Disabled'
+    publicNetworkAccess: enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
     siteConfig: {
-      linuxFxVersion: 'Python|${pythonVersion}'
       ftpsState: 'FtpsOnly'
-      minimumElasticInstanceCount: 0
+      minTlsVersion: '1.2'
     }
-    appSettings: [
-      { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
-      { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }
-      { name: 'AzureWebJobsStorage', value: storageConnectionString }
-      { name: 'APPINSIGHTS_INSTRUMENTATIONKEY', value: appInsights.properties.InstrumentationKey }
-      { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
-    ]
+    // Flex Consumption: functionAppConfig is REQUIRED on create
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          // primaryEndpoints.blob already ends with '/'
+          value: '${storage.properties.primaryEndpoints.blob}${deploymentStorageContainerName}'
+          authentication: {
+            // use system-assigned managed identity of the Function App
+            type: 'SystemAssignedIdentity'
+          }
+        }
+      }
+      runtime: {
+        name: 'python'
+        version: pythonVersion
+      }
+      // Optional but recommended: tune as needed
+      scaleAndConcurrency: {
+        maximumInstanceCount: 40
+        instanceMemoryMB: 2048
+      }
+    }
   }
-  dependsOn: [plan, storage, appInsights]
+}
+
+// アプリ設定は子リソースで構成
+resource appSettings 'Microsoft.Web/sites/config@2024-11-01' = {
+  parent: functionApp
+  name: 'appsettings'
+  properties: {
+    AzureWebJobsStorage: storageConnectionString
+    APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
+    APPLICATIONINSIGHTS_CONNECTION_STRING: appInsights.properties.ConnectionString
+  }
+}
+
+// Grant Function App's system-assigned identity access to the deployment container (storage account scope)
+resource deployStorageBlobDataContrib 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, 'blob-data-contributor', functionApp.name)
+  scope: storage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
 }
 
 // Private Endpoint
@@ -115,12 +171,12 @@ resource pe 'Microsoft.Network/privateEndpoints@2024-07-01' = if (!empty(peSubne
       }
     ]
   }
-  dependsOn: [functionApp]
 }
 
 // DNS zone group
 resource peDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-07-01' = if (!empty(peSubnetId)) {
-  name: '${pe.name}/default'
+  parent: pe
+  name: 'default'
   properties: {
     privateDnsZoneConfigs: [
       {
@@ -129,7 +185,6 @@ resource peDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups
       }
     ]
   }
-  dependsOn: [pe]
 }
 
 output functionHostName string = functionApp.properties.defaultHostName

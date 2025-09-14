@@ -4,12 +4,13 @@ metadata:
 
 infra:
   path: ./infra
-  module: main.bicep
+  module: main
 
 services:
   function:
     project: ./mcp-code            # Functions コードがあるディレクトリ
     language: python
     host: function 
-    resourceName: ${AZURE_ENV_NAME}-${name}func
+    # 実際に作成された Function App 名に合わせる（azd deploy が対象を特定できるように）
+    resourceName: mcpfunc3d7kn6ag2fwls
 

@@ -175,8 +175,14 @@ az login --use-device-code
 git clone https://github.com/YamadaKZ/MCP_Bicep.git
 cd MCP_Bicep
 
-# プロジェクトを初期化（ローカルテンプレートを使用）
-azd init --template ./
+## サインイン（初回のみ）
+
+インストール後、Azure アカウントにサインインして azd に認証情報を与えます。公式の「Get started using Azure Developer CLI」に従い、次を実行してください。
+
+```powershell
+azd auth login
+```
+
 
 # 環境を作成（dev 環境／リージョン: japaneast）
 azd env new dev --subscription <your-subscription-id> --location japaneast
