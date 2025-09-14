@@ -185,6 +185,7 @@ azd auth login
 
 
 # 環境を作成（dev 環境／リージョン: japaneast）
+```powershell
 azd env new dev --subscription <your-subscription-id> --location japaneast
 ```
 
@@ -197,7 +198,7 @@ azd env new dev --subscription <your-subscription-id> --location japaneast
 初回は `main.bicep` のパラメータ `mcpFunctionsKey` を空文字列のままインフラを構築します。
 
 ```powershell
-# （任意）リソースグループを先に作成しておくと名前の指定が容易です
+# （任意）リソースグループを先に作成しておくと名前の指定が容易です。特に指定がない場合は、azd upで直接行う方式で大丈夫です。
 az group create --name <resource-group-name> --location japaneast
 
 # インフラと Functions コードを一括デプロイ

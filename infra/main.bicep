@@ -70,7 +70,6 @@ module apim './apim.bicep' = {
     mcpFunctionsKey: mcpFunctionsKey
     apiPath: 'mcp'
   }
-  dependsOn: [network, function]
 }
 
 output functionUrl string = 'https://${function.outputs.functionHostName}'
