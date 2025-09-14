@@ -98,6 +98,10 @@ resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
   location: location
   kind: 'functionapp,linux'
   identity: { type: 'SystemAssigned' }
+  tags: {
+    // azd がサービスを特定するためのタグ。azure.yaml の services.<name> に合わせる
+    'azd-service-name': 'function'
+  }
   properties: {
     serverFarmId: plan.id
     httpsOnly: true

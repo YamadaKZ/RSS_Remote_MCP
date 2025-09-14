@@ -11,6 +11,5 @@ services:
     project: ./mcp-code            # Functions コードがあるディレクトリ
     language: python
     host: function 
-    # 実際に作成された Function App 名に合わせる（azd deploy が対象を特定できるように）
-    resourceName: mcpfunc3d7kn6ag2fwls
+    # resourceName は指定しません（Bicep 側で azd-service-name タグを付与し、azd が自動検出します）
 
