@@ -25,7 +25,7 @@ param deploymentStorageContainerName string = 'deployments'
 @description('Enable public network access to the Function App (required for Kudu/SCM based deployments like azd deploy).')
 param enablePublicNetworkAccess bool = true
 
-var storageSuffix = environment().suffixes.storage
+// removed: no longer needed after switching to identity-based AzureWebJobsStorage
 
 // ストレージアカウント（2024-02-01 は japaneast で未登録のため 2024-01-01 を使用）
 resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
@@ -90,8 +90,7 @@ resource appInsights 'microsoft.insights/components@2020-02-02' = {
 }
 
 // 推奨: 関数ではなくリソース参照の listKeys() を使用
-var storageKeys = storage.listKeys()
-var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storageKeys.keys[0].value};EndpointSuffix=${storageSuffix}'
+// removed: no longer needed after switching to identity-based AzureWebJobsStorage
 
 // Function App
 resource functionApp 'Microsoft.Web/sites@2024-11-01' = {
@@ -138,7 +137,9 @@ resource appSettings 'Microsoft.Web/sites/config@2024-11-01' = {
   parent: functionApp
   name: 'appsettings'
   properties: {
-    AzureWebJobsStorage: storageConnectionString
+    // Host storage をマネージドIDで利用
+    AzureWebJobsStorage__accountName: storage.name
+    AzureWebJobsStorage__credential: 'managedidentity'
     APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
     APPLICATIONINSIGHTS_CONNECTION_STRING: appInsights.properties.ConnectionString
   }
@@ -150,6 +151,28 @@ resource deployStorageBlobDataContrib 'Microsoft.Authorization/roleAssignments@2
   scope: storage
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Host storage 用の推奨ロール: Blob Data Owner（ホスト管理操作で不足しないように安全側）
+resource hostStorageBlobDataOwner 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, 'blob-data-owner', functionApp.name)
+  scope: storage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b') // Storage Blob Data Owner
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// キュー拡張やホストでのキュー利用に備え Queue Data Contributor を付与
+resource hostStorageQueueDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, 'queue-data-contributor', functionApp.name)
+  scope: storage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88') // Storage Queue Data Contributor
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }

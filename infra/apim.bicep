@@ -55,7 +55,7 @@ resource apim 'Microsoft.ApiManagement/service@2024-06-01-preview' = {
   }
 }
 
-// MCP API
+// Named Value に MCP システムキーを保存
 resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview' = if (!empty(mcpFunctionsKey)) {
   parent: apim
   name: 'mcp-functions-key'
@@ -66,7 +66,7 @@ resource mcpKey 'Microsoft.ApiManagement/service/namedValues@2024-06-01-preview'
   }
 }
 
-// Named Value に MCP システムキーを保存
+// MCP API
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
   parent: apim
   name: apiPath
@@ -84,6 +84,8 @@ resource mcpApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
 resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-preview' = if (!empty(mcpFunctionsKey)) {
   parent: mcpApi
   name: 'policy'
+  // Named Value の作成順序を保証
+  dependsOn: [ mcpKey ]
   properties: {
     format: 'xml'
     value: '''<policies>
@@ -155,6 +157,24 @@ resource messageOperation 'Microsoft.ApiManagement/service/apis/operations@2024-
     }
     responses: [ { statusCode: 200 } ]
   }
+}
+
+// Product の作成（サブスクリプション不要の公開プロダクト）
+resource mcpProduct 'Microsoft.ApiManagement/service/products@2024-06-01-preview' = {
+  parent: apim
+  name: 'mcp'
+  properties: {
+    displayName: 'MCP'
+    description: 'Managed Client Protocol API product'
+    subscriptionRequired: false
+    state: 'published'
+  }
+}
+
+// API を Product に関連付け
+resource mcpApiProductLink 'Microsoft.ApiManagement/service/products/apis@2024-06-01-preview' = {
+  parent: mcpProduct
+  name: mcpApi.name
 }
 
 output apimGatewayUrl string = 'https://${apim.name}.azure-api.net'

@@ -62,6 +62,8 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-07-01' = {
         name: 'snet-apim-int'
         properties: {
           addressPrefix: apimSubnetPrefix
+          // APIM Standard v2 の VNet 統合では基盤が App Service を利用するため、
+          // サブネットの委任は Microsoft.Web/serverFarms が要求されます（AppServiceLink の SAL 作成に必要）。
           delegations: [
             {
               name: 'Microsoft.Web/serverFarms'
@@ -78,7 +80,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-07-01' = {
       }
     ]
   }
-  dependsOn: [nsg]
 }
 
 // Private DNS ゾーンと VNet リンクの作成
@@ -88,7 +89,8 @@ resource dnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
 }
 
 resource dnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
-  name: '${dnsZone.name}/link-${vnet.name}'
+  parent: dnsZone
+  name: 'link-${vnet.name}'
   location: 'global'
   properties: {
     virtualNetwork: {
