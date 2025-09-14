@@ -186,6 +186,10 @@ azd auth login
 
 # 環境を作成（dev 環境／リージョン: japaneast）
 ```powershell
+# プロジェクトを初期化（ローカルテンプレート使用）
+azd init --template ./
+
+# 環境を作成（dev 環境／リージョン: japaneast）
 azd env new dev --subscription <your-subscription-id> --location japaneast
 ```
 

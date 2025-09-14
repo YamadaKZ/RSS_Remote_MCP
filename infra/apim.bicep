@@ -98,7 +98,7 @@ resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-
             </set-header>
             <!-- GET のときだけ SSE 用ヘッダーを付与 -->
             <choose>
-                <when condition="@(context.Request.Method == \"GET\")">
+                <when condition='@(context.Request.Method == "GET")'>
                     <set-header name="Accept" exists-action="override">
                         <value>text/event-stream</value>
                     </set-header>
@@ -116,7 +116,7 @@ resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-
             <base />
             <!-- GET 応答だけ event-stream にする -->
             <choose>
-                <when condition="@(context.Request.Method == \"GET\")">
+                <when condition='@(context.Request.Method == "GET")'>
                     <set-header name="Content-Type" exists-action="override">
                         <value>text/event-stream</value>
                     </set-header>
