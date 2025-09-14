@@ -1,77 +1,18 @@
-# MCP_Bicep – Azure Developer CLI テンプレート
+# MCP_Bicep – RSS-MCP
 
-Azure Developer CLI (azd) を使って、メッセージ・センター・プラットフォーム (MCP) のインフラと Python 製 Azure Functions アプリを一括デプロイするためのテンプレートです。
+このリポジトリは Azure Functions + API Management (APIM) 上で稼働する Remote MCP サーバーです。VS Code などの MCP クライアントから SSE で接続し、RSS/Atom フィードの取得・集約・フィルタができます。
 
-> ポイント要約
->
-> - `azure.yaml` でプロジェクト名・インフラ構成・サービスを宣言し、インフラのエントリーポイントは `infra/main.bicep`。
-> - サービスは `./mcp-code` ディレクトリの Python Functions アプリ（SSE とメッセージ POST の /mcp エンドポイント実装を前提）。
-
-## ハンズオン記事（全4本）と本テンプレートの位置づけ
-
-- この azd コマンドで動作する環境は、以下のハンズオンで Azure Portal 上から段階的に構築していた内容を、Azure Developer CLI で再現・自動化したものです。Portal での手作業を azd に置き換えることで、同じ構成をコマンド一発で作成・更新できます。
-
-Zenn アカウント: https://zenn.dev/yamadakz
-
-ハンズオン 第1弾〜第4弾:
-
-1. ローカルでの MCP サーバー開発
-  - https://zenn.dev/yamadakz/articles/mcp-local-server
-2. Azure Functions へのデプロイ
-  - https://zenn.dev/yamadakz/articles/mcp-azure-function
-3. APIM の前段化（APIM 経由で MCP を公開）
-  - https://zenn.dev/yamadakz/articles/mcp-apim-azure-functions
-4. VNet による閉域化
-  - https://zenn.dev/yamadakz/articles/mcp-vnet-closed
-
-本リポジトリは、上記ハンズオンの内容を azd 用テンプレートとして集約しています。`infra/main.bicep` をエントリーポイントに、VNet → Functions → APIM の順でプロビジョニングし、`mcp-code` の Python Functions を同時にデプロイします。初回は APIM → Functions 呼び出し用のシステムキーを空で立ち上げ、デプロイ後に Functions 側の拡張の System key を取得して `BICEP_PARAM_MCPFUNCTIONSKEY` に設定し、再度 `azd up` で反映します。
-
-
-
-### 重要: MCP 実装の編集ポイント
-
-- `mcp-code/` 内の次の3ファイルが、今回の MCP を構成する中核です。これらを変更すると、独自のロジックやツールを備えた MCP サーバーを構築できます。
-  - `function_app.py`: MCP のエンドポイント/ツール実装本体（ここを編集すれば「オリジナルの MCP」を実装できます）
-  - `host.json`: Azure Functions のホスト設定（ランタイム/拡張の基本設定）
-  - `requirements.txt`: Python 依存パッケージの定義
-
-
-> デフォルト実装: 入力文字列を反転して返す文字反転ツール「`reverse_text`」がデプロイされます。
-
----
-
-
-## リポジトリ構成
-
-
-```
-azure.yaml
-infra/
-  apim.bicep       # VNet 統合の StandardV2 APIM。Named Value `mcp-functions-key` を作成
-  function.bicep   # ストレージ、Flex Consumption の Function App (Python)、App Insights、(任意) Private Endpoint
-  main.bicep       # エントリーポイント。network/function/apim モジュールを呼び出す
-  network.bicep    # VNet、APIM/Function 用サブネット、NSG、Private DNS ゾーン
-mcp-code/
-  function_app.py  # Python Functions 実装（/mcp: GET(SSE), POST(message) を提供する想定）
-  host.json
-  requirements.txt
-```
-
-### Bicep モジュール概要
-- `network.bicep`:
-  - VNet、APIM 用/Functions 用サブネット、NSG、Private DNS ゾーンを作成
-  - 各リソース ID を出力
-- `function.bicep`:
-  - ストレージアカウント、Flex Consumption プランの Function App (Python)、App Insights、(必要に応じて) Private Endpoint
-- `apim.bicep`:
-  - VNet 統合された StandardV2 SKU の APIM
-  - Named Value `mcp-functions-key` に Functions の MCP 拡張 System key を保持
-  - `/mcp` に GET(SSE) と POST(message) の操作を公開
-- `main.bicep`:
-  - `network` -> `function` -> `apim` の順でモジュールを呼び出し
-  - APIM -> Functions 認証用パラメータ `mcpFunctionsKey` を受け取り（初回は空で可）
-
-> 注意: 実運用時は `mcp-code` に SSE とメッセージ投稿を実装した Python Functions を配置してください。
+- 提供ツール
+  - list_presets: ビルトインのRSSプリセット一覧とサンプルを返します。
+  - fetch_rss: URL/urlList または preset でフィード取得。maxItems, sinceHours, keyword, includeSummary, timeoutSec などで絞り込み可能。
+- 主なプリセット: azure_blog, azure_updates_rc, zenn_trend, zenn_user(zennUser 必須), zenn_topic(zennTopic 必須)
+- 実行例（クライアントで tool を呼ぶ際の arguments 例）
+  - Azure Blog を5件: {"preset":"azure_blog","maxItems":5}
+  - 複数URL＋キーワード/期間: {"urlList":"https://a.example/feed https://b.example/feed","keyword":"Azure","sinceHours":48}
+  - Zennトピック(azure)の最近72時間: {"preset":"zenn_topic","zennTopic":"azure","sinceHours":72}
+- 返却の要点: { count, items[], errors }
+  - items[].title, link, published/updated(ISO8601), source.{feedTitle,feedUrl}, summary(includeSummary=true のとき)
+  - 接続方法は本ページ下部「動作確認」を参照（.vscode/mcp.json に APIM 経由の SSE URL を設定）
 
 ---
 
@@ -82,7 +23,7 @@ mcp-code/
 - Git 環境があること（このリポジトリを取得するため）
 - `./mcp-code` に Function のコードが配置されていること
 
-> OS: Windows、既定シェル: PowerShell を想定したコマンド例を記載しています。
+> OS: Windows、既定シェル: PowerShell / Comand Prompt を想定したコマンド例を記載しています。
 
 > ログインに関して:
 > - azd のみで運用する場合は、`azd auth login` のみで十分です。
@@ -281,104 +222,6 @@ azd down
 
 ---
 
-## エンドポイントと動作の目安
-
-- APIM 公開 API: `https://<apim-name>.azure-api.net/mcp`
-  - GET: Server-Sent Events (SSE)
-  - POST: メッセージ投稿（ボディ形式は `mcp-code` 側の実装に依存）
-- 直接 Functions を呼ぶ場合: `https://<function-host>.azurewebsites.net/api/mcp`（認証が必要な場合あり）
-
-> 具体的なリクエスト・レスポンス例は `mcp-code` の実装に合わせてご用意ください。
-
----
-
-## トラブルシューティングのヒント
-
-- `mcp-functions-key` が未設定/不正
-  - APIM から Functions を呼び出す際に 401/403 となる場合は、`mcpFunctionsKey` の設定と再デプロイをご確認ください。
-- VNet 統合関連の疎通不良
-  - サブネットの委任/NSG/Private DNS ゾーンのリンク設定を確認してください。
-- Functions の起動遅延/依存パッケージ不足
-  - `mcp-code/requirements.txt` を見直し、必要なライブラリがインストールされているか確認してください。
-- 権限不足
-  - デプロイ先サブスクリプションへの権限（Owner/Contributor 等）や Key Vault/Storage などのアクセス許可をご確認ください。
-
----
-
-
-## .env と環境ファイルについて
-
-- `azd env new` が `.azure/<env>.env` を自動生成します（標準の環境変数を保持）。
-- 追加の Bicep パラメータは、`azd env set BICEP_PARAM_<ParamName> <value>` で追記するのが簡単です。
-- 一時的にシェルへ設定して利用することも可能ですが、環境ファイルを使うと再デプロイ時の再入力が不要で便利です。
-
----
-
-## Azure CLIのインストールとサインイン（必要な場合）
-
-Azure CLI（`az`）はデプロイの確認や補助に便利です。未導入の場合は以下のいずれかの方法でインストールしてください。
-
-### Windows
-
-```powershell
-# インストール（いずれか）
-winget install Microsoft.AzureCLI
-# または
-choco install azure-cli
-
-# バージョン確認
-az --version
-```
-
-### macOS
-
-```bash
-brew update && brew install azure-cli
-az --version
-```
-
-### Linux（Debian/Ubuntu の例）
-
-```bash
-curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-az --version
-```
-
-> 他ディストリビューションや詳細は Microsoft Learn を参照してください。
-
-### サインインとサブスクリプション選択
-
-```powershell
-# Azure へサインイン（ブラウザーが開きます）
-az login
-
-# 複数サブスクリプションがある場合は確認
-az account list --output table
-
-# 対象サブスクリプションを選択（ID でも名前でも可）
-az account set --subscription "<your-subscription-id-or-name>"
-
-# 選択内容を確認
-az account show --output table
-```
-
-ブラウザが使えない環境では次を利用できます:
-
-```powershell
-az login --use-device-code
-```
-
-
----
-
-## 参考
-
-- Azure Developer CLI (azd): https://aka.ms/azure-dev
-- Azure Functions: https://learn.microsoft.com/azure/azure-functions/
-- Azure API Management: https://learn.microsoft.com/azure/api-management/
-- Bicep: https://learn.microsoft.com/azure/azure-resource-manager/bicep/
-
----
 
 ## ライセンス
 使用・コード変更可能。
