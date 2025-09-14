@@ -6,9 +6,30 @@ Azure Developer CLI (azd) を使って、メッセージ・センター・プラ
 >
 > - `azure.yaml` でプロジェクト名・インフラ構成・サービスを宣言し、インフラのエントリーポイントは `infra/main.bicep`。
 > - サービスは `./mcp-code` ディレクトリの Python Functions アプリ（SSE とメッセージ POST の /mcp エンドポイント実装を前提）。
+
+## ハンズオン記事（全4本）と本テンプレートの位置づけ
+
+- この azd コマンドで動作する環境は、以下のハンズオンで Azure Portal 上から段階的に構築していた内容を、Azure Developer CLI で再現・自動化したものです。Portal での手作業を azd に置き換えることで、同じ構成をコマンド一発で作成・更新できます。
+
+Zenn アカウント: https://zenn.dev/yamadakz
+
+ハンズオン 第1弾〜第4弾:
+
+1. ローカルでの MCP サーバー開発
+  - https://zenn.dev/yamadakz/articles/mcp-local-server
+2. Azure Functions へのデプロイ
+  - https://zenn.dev/yamadakz/articles/mcp-azure-function
+3. APIM の前段化（APIM 経由で MCP を公開）
+  - https://zenn.dev/yamadakz/articles/mcp-apim-azure-functions
+4. VNet による閉域化
+  - https://zenn.dev/yamadakz/articles/mcp-vnet-closed
+
+本リポジトリは、上記ハンズオンの内容を azd 用テンプレートとして集約しています。`infra/main.bicep` をエントリーポイントに、VNet → Functions → APIM の順でプロビジョニングし、`mcp-code` の Python Functions を同時にデプロイします。初回は APIM → Functions 呼び出し用のシステムキーを空で立ち上げ、デプロイ後に Functions 側の拡張の System key を取得して `BICEP_PARAM_MCPFUNCTIONSKEY` に設定し、再度 `azd up` で反映するフローもハンズオンに沿っています。
+
 > - 初回は APIM が使うシステムキー `mcpFunctionsKey` を空文字でデプロイ。デプロイ後に Functions 拡張の System key を取得し、再デプロイで設定。
 
 ---
+
 
 ## リポジトリ構成
 
@@ -196,16 +217,6 @@ azd up
 
 その後、再度 `azd up` を実行してください。
 
----
-
-## エンドポイントと動作の目安
-
-- APIM 公開 API: `https://<apim-name>.azure-api.net/mcp`
-  - GET: Server-Sent Events (SSE)
-  - POST: メッセージ投稿（ボディ形式は `mcp-code` 側の実装に依存）
-- 直接 Functions を呼ぶ場合: `https://<function-host>.azurewebsites.net/api/mcp`（認証が必要な場合あり）
-
-> 具体的なリクエスト・レスポンス例は `mcp-code` の実装に合わせてご用意ください。
 
 ---
 
@@ -241,13 +252,10 @@ VS CodeからAPIM経由でMCPサーバーに接続できることを確認しま
 
 最後に Azure Functions 側の公開アクセスを無効化すれば、Private Endpoint 経由以外の受信を拒否できます。
 
-![v-net](images/url.png)
+![v-net](images/public.png)
 
 - Azure Portal → 対象の Azure Function → ネットワーク
 - 公衆ネットワーク アクセス: 無効 に設定
-
-
-
 
 
 
@@ -260,6 +268,17 @@ azd down
 ```
 
 > 実行前に削除対象や課金影響を必ずご確認ください。
+
+---
+
+## エンドポイントと動作の目安
+
+- APIM 公開 API: `https://<apim-name>.azure-api.net/mcp`
+  - GET: Server-Sent Events (SSE)
+  - POST: メッセージ投稿（ボディ形式は `mcp-code` 側の実装に依存）
+- 直接 Functions を呼ぶ場合: `https://<function-host>.azurewebsites.net/api/mcp`（認証が必要な場合あり）
+
+> 具体的なリクエスト・レスポンス例は `mcp-code` の実装に合わせてご用意ください。
 
 ---
 
