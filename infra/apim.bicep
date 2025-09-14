@@ -88,7 +88,8 @@ resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-
   dependsOn: [ mcpKey ]
   properties: {
     format: 'xml'
-    value: '''<policies>
+    value: '''
+    <policies>
         <inbound>
             <base />
             <!-- Functions 認証：mcp_extension の system key を Named value から -->
@@ -125,7 +126,8 @@ resource mcpApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-
         <on-error>
             <base />
         </on-error>
-    </policies>'''
+    </policies>
+    '''
   }
 }
 
