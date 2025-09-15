@@ -6,13 +6,14 @@
   - list_presets: ビルトインのRSSプリセット一覧とサンプルを返します。
   - fetch_rss: URL/urlList または preset でフィード取得。maxItems, sinceHours, keyword, includeSummary, timeoutSec などで絞り込み可能。
 - 主なプリセット: azure_blog, azure_updates_rc, zenn_trend, zenn_user(zennUser 必須), zenn_topic(zennTopic 必須)
+  
 - 実行例（クライアントで tool を呼ぶ際の arguments 例）
   - Azure Blog を5件: {"preset":"azure_blog","maxItems":5}
   - 複数URL＋キーワード/期間: {"urlList":"https://a.example/feed https://b.example/feed","keyword":"Azure","sinceHours":48}
   - Zennトピック(azure)の最近72時間: {"preset":"zenn_topic","zennTopic":"azure","sinceHours":72}
-- 返却の要点: { count, items[], errors }
-  - items[].title, link, published/updated(ISO8601), source.{feedTitle,feedUrl}, summary(includeSummary=true のとき)
-  - 接続方法は本ページ下部「動作確認」を参照（.vscode/mcp.json に APIM 経由の SSE URL を設定）
+  - Power BI ブログを10件（URL直指定）: https://powerbi.microsoft.com/en-us/blog/feed/
+  　　　　　　　　　　　　　　　　　　　　ここから、10件の最新の情報を取ってきて。
+  　　　　　　　　　　　　　　　　　　　　use fetch_rss
 
 ---
 
