@@ -12,8 +12,7 @@
   - 複数URL＋キーワード/期間: {"urlList":"https://a.example/feed https://b.example/feed","keyword":"Azure","sinceHours":48}
   - Zennトピック(azure)の最近72時間: {"preset":"zenn_topic","zennTopic":"azure","sinceHours":72}
   - Power BI ブログを10件（URL直指定）: https://powerbi.microsoft.com/en-us/blog/feed/
-  　　　　　　　　　　　　　　　　　　　　ここから、10件の最新の情報を取ってきて。
-  　　　　　　　　　　　　　　　　　　　　use fetch_rss
+  　　　　　　　　　　　　　　　　　　　　ここから、10件の最新の情報を取ってきて。use fetch_rss
 
 ---
 
