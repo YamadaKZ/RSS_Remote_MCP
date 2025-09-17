@@ -12,15 +12,15 @@
     - プロンプト例: Azure Blogから５件の最新情報を取得して。use fetch_rss
   
   - urlからRSS情報を取得
-    - プロンプト例（Zenn マイクロソフト有志の会）:https://zenn.dev/p/microsoft/feed このurlから１０件の最新情報を取得して。use fetch_rss
-    - 
-    - プロンプト例 (Power BI ブログを10件): https://powerbi.microsoft.com/en-us/blog/feed/ここから、10件の最新の情報を取ってきて。use fetch_rss
+    - プロンプト例（Zenn マイクロソフト有志の会）:　https://zenn.dev/p/microsoft/feed このurlから１０件の最新情報を取得して。use fetch_rss
   
-  - 複数URL＋キーワード/期間: {"urlList":"https://a.example/feed https://b.example/feed","keyword":"Azure","sinceHours":48}
-    - プロンプト例: https://zenn.dev/p/microsoft/feed, https://powerbi.microsoft.com/en-us/blog/feed/, この2つのurlから、Azureに関する最新記事を取得して。use fetch_rss
+    - プロンプト例 (Power BI ブログを10件)： https://powerbi.microsoft.com/en-us/blog/feed/ここから、10件の最新の情報を取ってきて。use fetch_rss
   
-  - Zennトピック(azure)の最近72時間: {"preset":"zenn_topic","zennTopic":"azure","sinceHours":72}
-    - プロンプト例: zenn_topicから、azureに関する最新記事5件を取得して。use fetch_rss
+  - 複数URL＋キーワード/期間」： {"urlList":"https://a.example/feed https://b.example/feed","keyword":"Azure","sinceHours":48}
+    - プロンプト例： https://zenn.dev/p/microsoft/feed, https://powerbi.microsoft.com/en-us/blog/feed/, この2つのurlから、Azureに関する最新記事を取得して。use fetch_rss
+  
+  - Zennトピック(azure)の最近72時間： {"preset":"zenn_topic","zennTopic":"azure","sinceHours":72}
+    - プロンプト例： zenn_topicから、azureに関する最新記事5件を取得して。use fetch_rss
 
 ---
 
