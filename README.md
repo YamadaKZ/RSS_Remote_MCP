@@ -2,17 +2,25 @@
 
 このリポジトリは Azure Functions + API Management (APIM) 上で稼働する Remote MCP サーバーです。VS Code などの MCP クライアントから SSE で接続し、RSS/Atom フィードの取得・集約・フィルタができます。
 
-- 提供ツール
+- ### 提供ツール
   - list_presets: ビルトインのRSSプリセット一覧とサンプルを返します。
   - fetch_rss: URL/urlList または preset でフィード取得。maxItems, sinceHours, keyword, includeSummary, timeoutSec などで絞り込み可能。
 - 主なプリセット: azure_blog, azure_updates_rc, zenn_trend, zenn_user(zennUser 必須), zenn_topic(zennTopic 必須)
   
-- 実行例（クライアントで tool を呼ぶ際の arguments 例）
+- ### 実行例（クライアントで tool を呼ぶ際の arguments 例）
   - Azure Blog を5件: {"preset":"azure_blog","maxItems":5}
+    - プロンプト例: Azure Blogから５件の最新情報を取得して。use fetch_rss
+  
+  - urlからRSS情報を取得
+    - プロンプト例（Zenn マイクロソフト有志の会）:https://zenn.dev/p/microsoft/feed このurlから１０件の最新情報を取得して。use fetch_rss
+    - 
+    - プロンプト例 (Power BI ブログを10件): https://powerbi.microsoft.com/en-us/blog/feed/ここから、10件の最新の情報を取ってきて。use fetch_rss
+  
   - 複数URL＋キーワード/期間: {"urlList":"https://a.example/feed https://b.example/feed","keyword":"Azure","sinceHours":48}
+    - プロンプト例: https://zenn.dev/p/microsoft/feed, https://powerbi.microsoft.com/en-us/blog/feed/, この2つのurlから、Azureに関する最新記事を取得して。use fetch_rss
+  
   - Zennトピック(azure)の最近72時間: {"preset":"zenn_topic","zennTopic":"azure","sinceHours":72}
-  - Power BI ブログを10件（URL直指定）: https://powerbi.microsoft.com/en-us/blog/feed/
-  　　　　　　　　　　　　　　　　　　　　ここから、10件の最新の情報を取ってきて。use fetch_rss
+    - プロンプト例: zenn_topicから、azureに関する最新記事5件を取得して。use fetch_rss
 
 ---
 
