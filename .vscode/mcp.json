@@ -6,3 +6,13 @@
 //         }
 //     }
 // }
+
+
+{
+    "servers": {
+        "remote-mcp-via-apim": {
+        "type": "sse",
+        "url": "https://apim-mcpfunc36fby6save3lu.azure-api.net/mcp/runtime/webhooks/mcp/sse"
+        }
+    }
+}
